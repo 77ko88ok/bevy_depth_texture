@@ -22,6 +22,12 @@ var depth_sampler: sampler_comparison;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2)
 var<uniform> cutoff_depth: f32;
 
+// 非線形な深度値を線形（0.0 〜 1.0）に変換するヘルパー関数
+fn linearize_depth(raw_depth: f32, near: f32, far: f32) -> f32 {
+    //Reversed-Z透視投影における線形化式
+    return (near * far) / (far + raw_depth * (near - far));
+}
+
 // -----------------------------------------------------------------------------
 // フラグメントシェーダー
 // -----------------------------------------------------------------------------
@@ -29,17 +35,21 @@ var<uniform> cutoff_depth: f32;
 fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
     // 1. テクセル座標（整数ピクセル位置）を計算して生の深度値をロード
     let st = vec2<i32>(input.uv * vec2<f32>(textureDimensions(depth_texture).xy));
-    let depth = textureLoad(depth_texture, st, 0);
+    let raw_depth = textureLoad(depth_texture, st, 0);
 
     // 2. 背景（何も描画されていない空間）のハンドリング
     // 深度が 0.0 以下（または無効値）の場合は暗い背景色を返して終了
-    if (depth <= 0.0) {
+    if (raw_depth <= 0.0) {
         return vec4<f32>(0.05, 0.05, 0.08, 1.0);
     }
 
+    // カメラの近平面(near=0.1)と遠平面(far=100.0)を用いて線形化（距離に変換）
+    let depth = linearize_depth(raw_depth, 0.1, 100.0);
+
+    // 線形化したのでcutoff_depth(例: 0.1や0.2)が直感通りに機能します
     // 3. 【機能1】手前と奥での色分け（深度クリッピング / デバッグ表示）
     var base_color: vec3<f32>;
-    if (depth > cutoff_depth) {
+    if (depth < cutoff_depth) { // 線形化したため近距離（小さい値）を判定
         // 手前（カメラに近い側）：鮮やかなシアン・青系
         base_color = vec3<f32>(0.1, 0.7, 1.0);
     } else {
@@ -48,11 +58,11 @@ fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     // 4. 【機能2】等高線（Contour Line）の計算
-    // depth (0.0~1.0) を 20倍にし、fract() で小数部分(0.0~1.0の繰り返し周期)を取り出す
-    let line_pattern = fract(depth * 20.0);
+    // depth (0.0~1.0) を 30倍にし、fract() で小数部分(0.0~1.0の繰り返し周期)を取り出す
+    let line_pattern = fract(depth * 50.0);
     
     // 周期の開始部分（0.1未満の領域）を「黒い線」に設定
-    if (line_pattern < 0.1) {
+    if (line_pattern < 0.05) {
         base_color = vec3<f32>(0.0, 0.0, 0.0); // 等高線ライン
     }
 

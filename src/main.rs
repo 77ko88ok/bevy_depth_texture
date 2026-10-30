@@ -208,7 +208,7 @@ fn spawn_plane(
         
         // 【追加】しきい値の設定（例: 0.95）
         // ※値（0.0〜1.0）を調整することで、色の切り替わる距離が変わります
-        cutoff_depth: 0.5,
+        cutoff_depth: 0.022,
     });
     commands.spawn((
         Mesh3d(plane_handle),
