@@ -41,7 +41,7 @@ struct ShowDepthTextureMaterial {
         cutoff_depth: 0.95,
     });
 ```
-
+ 
 ---
 
 ### 2. シェーダー側の変更（`show_depth_texture_material.wesl`）

@@ -32,6 +32,11 @@ struct ShowDepthTextureMaterial {
     #[texture(0, sample_type = "depth")]
     #[sampler(1, sampler_type = "comparison")]
     depth_texture: Option<Handle<Image>>,
+
+    // 【追加】@binding(2): 手前と奥を判定する深度のしきい値（0.0 ~ 1.0）
+    // AsBindGroup により、自動的に GPU の binding(2) へ f32 値が転送されます
+    #[uniform(2)]
+    cutoff_depth: f32,
 }
 
 #[derive(Clone, Resource)]
@@ -194,8 +199,16 @@ fn spawn_plane(
     demo_depth_texture: &DemoDepthTexture,
 ) {
     let plane_handle = meshes.add(Plane3d::new(Vec3::Z, Vec2::splat(2.0)));
+
+    // マテリアルのインスタンス化部分
     let show_depth_texture_material = show_depth_texture_materials.add(ShowDepthTextureMaterial {
+        
+        // 型が Option<Handle<Image>> なので Some() でラップして渡す必要がある
         depth_texture: Some(demo_depth_texture.0.clone()),
+        
+        // 【追加】しきい値の設定（例: 0.95）
+        // ※値（0.0〜1.0）を調整することで、色の切り替わる距離が変わります
+        cutoff_depth: 0.5,
     });
     commands.spawn((
         Mesh3d(plane_handle),
